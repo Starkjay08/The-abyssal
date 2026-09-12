@@ -1,1 +1,209 @@
-!Doctype html
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Samael Archive</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="arc-reactor-bg"></div>
+
+  <nav class="vertical-menu-drawer" id="menuDrawer">
+    <div class="vertical-brand-container">
+      <span class="vertical-char">L</span>
+      <span class="vertical-char">E</span>
+      <span class="vertical-char">G</span>
+      <span class="vertical-char">E</span>
+      <span class="vertical-char">N</span>
+      <span class="vertical-char">D</span>
+    </div>
+    <button class="stretched-toggle-rect" id="drawerToggleBtn" aria-label="Toggle Theme"></button>
+  </nav>
+
+  <div class="page-viewport-wrapper" id="pageWrapper">
+
+    <header class="invisible-header">
+      <button class="menu-box-btn" id="menuOpenBtn" aria-label="Open Menu">
+        <div></div><div></div><div></div>
+      </button>
+      <button class="theme-toggle-node" id="headerToggleBtn" aria-label="Toggle Theme">
+        <div class="toggle-icon-glyph"></div>
+      </button>
+    </header>
+
+    <main class="main-content">
+      
+      <section class="faded-gray-wrapper" id="carouselWrapper">
+        
+        <div class="square-image-viewport" id="imageViewport">
+          <div class="carousel-slider" id="imageSlider"></div>
+        </div>
+
+        <div class="transient-dots-container" id="dotsContainer"></div>
+
+      </section>
+
+      <section class="text-housing-unit" id="textHousingUnit"></section>
+
+    </main>
+
+    <footer class="borderless-footer">
+      <p class="watermark-text">samael</p>
+    </footer>
+
+  </div>
+
+  <script>
+    let repositoryData = [];
+    let currentIndex = 0;
+    let slideInterval;
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let dotTimeout;
+
+    const bodyNode = document.body;
+    const menuOpenBtn = document.getElementById('menuOpenBtn');
+    const menuDrawer = document.getElementById('menuDrawer');
+    const pageWrapper = document.getElementById('pageWrapper');
+    const headerToggleBtn = document.getElementById('headerToggleBtn');
+    const drawerToggleBtn = document.getElementById('drawerToggleBtn');
+    const imageSlider = document.getElementById('imageSlider');
+    const textHousingUnit = document.getElementById('textHousingUnit');
+    const dotsContainer = document.getElementById('dotsContainer');
+    const carouselWrapper = document.getElementById('carouselWrapper');
+
+    const toggleTheme = () => {
+      const currentTheme = bodyNode.getAttribute('data-theme');
+      const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+      bodyNode.setAttribute('data-theme', nextTheme);
+    };
+    headerToggleBtn.addEventListener('click', toggleTheme);
+    drawerToggleBtn.addEventListener('click', toggleTheme);
+
+    menuOpenBtn.addEventListener('click', () => {
+      menuDrawer.classList.add('active');
+      pageWrapper.classList.add('menu-open');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (menuDrawer.classList.contains('active') && 
+          !menuDrawer.contains(e.target) && 
+          !menuOpenBtn.contains(e.target)) {
+        menuDrawer.classList.remove('active');
+        pageWrapper.classList.remove('menu-open');
+      }
+    });
+
+    async function initRepository() {
+      try {
+        const response = await fetch('data.json');
+        repositoryData = await response.json();
+        
+        renderCarouselStructure();
+        updateDisplayState();
+        startAutoRotationEngine();
+        setupGestureDetectors();
+      } catch (error) {
+        console.error("Data initialization failure:", error);
+      }
+    }
+
+    function renderCarouselStructure() {
+      imageSlider.innerHTML = '';
+      dotsContainer.innerHTML = '';
+      
+      repositoryData.forEach((item, index) => {
+        const slide = document.createElement('div');
+        slide.className = 'image-slide-unit';
+        const img = document.createElement('img');
+        img.src = item.imageSource;
+        img.alt = item.name;
+        slide.appendChild(img);
+        imageSlider.appendChild(slide);
+
+        const dot = document.createElement('div');
+        dot.className = `dot-node ${index === 0 ? 'active' : ''}`;
+        dotsContainer.appendChild(dot);
+      });
+    }
+
+    function updateDisplayState() {
+      if (!repositoryData.length) return;
+      const data = repositoryData[currentIndex];
+
+      imageSlider.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+      textHousingUnit.innerHTML = `
+        <h3>${data.name}</h3>
+        <p class="meta-data"><strong>Year of birth:</strong> ${data.yearOfBirth}</p>
+        <p class="meta-data"><strong>Year of death:</strong> ${data.yearOfDeath}</p>
+        <p class="meta-data"><strong>State/country:</strong> ${data.location}</p>
+        <p class="body-text">${data.description}</p>
+      `;
+
+      const dots = document.querySelectorAll('.dot-node');
+      dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === currentIndex);
+      });
+
+      triggerTransientFeedback();
+    }
+
+    function triggerTransientFeedback() {
+      dotsContainer.classList.add('visible');
+      clearTimeout(dotTimeout);
+      dotTimeout = setTimeout(() => {
+        dotsContainer.classList.remove('visible');
+      }, 2500);
+    }
+
+    function startAutoRotationEngine() {
+      clearInterval(slideInterval);
+      slideInterval = setInterval(() => {
+        navigateCarouselNext();
+      }, 30000);
+    }
+
+    function navigateCarouselNext() {
+      currentIndex = (currentIndex + 1) % repositoryData.length;
+      updateDisplayState();
+    }
+
+    function navigateCarouselPrev() {
+      currentIndex = (currentIndex - 1 + repositoryData.length) % repositoryData.length;
+      updateDisplayState();
+    }
+
+    function setupGestureDetectors() {
+      [carouselWrapper, textHousingUnit].forEach(element => {
+        element.addEventListener('touchstart', e => {
+          touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        element.addEventListener('touchend', e => {
+          touchEndX = e.changedTouches[0].screenX;
+          handleSwipeGesture();
+        }, { passive: true });
+      });
+    }
+
+    function handleSwipeGesture() {
+      const threshold = 50;
+      if (touchStartX - touchEndX > threshold) {
+        navigateCarouselNext();
+        startAutoRotationEngine(); 
+      } else if (touchEndX - touchStartX > threshold) {
+        navigateCarouselPrev();
+        startAutoRotationEngine();
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', initRepository);
+  </script>
+</body>
+</html>
